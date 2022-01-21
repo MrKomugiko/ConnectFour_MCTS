@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v6.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v6.0": {
+      "ConnectFour_MCTS/1.0.0": {
+        "runtime": {
+          "ConnectFour_MCTS.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ConnectFour_MCTS/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

@@ -1,0 +1,16 @@
+D:\Code\ConnectFour_MCTS\bin\Debug\net6.0\ConnectFour_MCTS.exe
+D:\Code\ConnectFour_MCTS\bin\Debug\net6.0\ConnectFour_MCTS.deps.json
+D:\Code\ConnectFour_MCTS\bin\Debug\net6.0\ConnectFour_MCTS.runtimeconfig.json
+D:\Code\ConnectFour_MCTS\bin\Debug\net6.0\ConnectFour_MCTS.dll
+D:\Code\ConnectFour_MCTS\bin\Debug\net6.0\ref\ConnectFour_MCTS.dll
+D:\Code\ConnectFour_MCTS\bin\Debug\net6.0\ConnectFour_MCTS.pdb
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.GlobalUsings.g.cs
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.csproj.AssemblyReference.cache
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.GeneratedMSBuildEditorConfig.editorconfig
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.AssemblyInfoInputs.cache
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.AssemblyInfo.cs
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.csproj.CoreCompileInputs.cache
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.dll
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ref\ConnectFour_MCTS.dll
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.pdb
+D:\Code\ConnectFour_MCTS\obj\Debug\net6.0\ConnectFour_MCTS.genruntimeconfig.cache
