@@ -68,7 +68,6 @@ public class Engine
                 }
                 Console.WriteLine();
             }
-            Console.WriteLine("winner is = " + result.winnerMark);
         }
         else
         {
@@ -110,11 +109,10 @@ public class Engine
         return board;
     } 
     public static Random rand = new Random();
-    public static (bool status, char? winnerMark, string[]? winerPositions) Simulate(int FirstPlayerID, char[,] _board)
+    public static (bool status, char? winnerMark, string[]? winerPositions) Simulate(int NextPlayerWhoMakeMove, char[,] _board)
     {
         MCTS.SimulationsCount++;
 
-        int playerTurn = FirstPlayerID;
         (bool status, char? winnerMark, string[]? winerPositions) result = (false,null,null);
         int[] slots;
         while(result.status==false)
@@ -124,13 +122,15 @@ public class Engine
                 return (true, null, null); // remis
             }
 
-            MakeMove(slots[rand.Next(0,slots.Length)],playerTurn==1?2:1,_board);
+            MakeMove(slots[rand.Next(0,slots.Length)],NextPlayerWhoMakeMove,_board);
             result = IsGameEnded(_board);
+            // change player id
+            NextPlayerWhoMakeMove= NextPlayerWhoMakeMove==1?2:1;
         }
         return result;
     }
     public static (bool status, char? winnerMark, string[]? winerPositions) IsGameEnded(char[,] board)
-    {
+    {   
         // draw checking
         int[] slots = GetLegalMovesList(board);
                 if(slots.Length == 0){
@@ -141,7 +141,6 @@ public class Engine
         int board_x_size = board.GetLength(0);
         int board_y_size = board.GetLength(1);
         string[] winerPositionsStringCode = new string[4];
-
         #region Sprawdzanie na przekątnych rosnących
          /*
                 -   -   -   -   -   
@@ -150,38 +149,24 @@ public class Engine
                 -   X   -   -   -  
                 X   -   -   -   -    
             */
-        var max_X_scope = board_x_size-3;
-        var max_Y_scope = board_y_size-3;
-        char EMPTY= Char.Parse("-");
-        char checkingCharacter = Char.Parse("-");
-        int charactersinrow = 0;
-        char currentCheckingCharacter = EMPTY;
 
-        Enumerable.Range(0,max_Y_scope).ToList().ForEach(y=>
-        {
-            if(charactersinrow == 4) return;
-            Enumerable.Range(0,max_X_scope).ToList().ForEach(x=>
-            {
-                if(charactersinrow == 4) return;
-                if(board[x,y] == EMPTY) return;
-                currentCheckingCharacter = board[x,y];
-                charactersinrow = 0;
-                Enumerable.Range(0,4).ToList().ForEach(i=>{
-               // Console.Write($"[{x+i},{y+i}] ");
-                    if(board[x+i,y+i] == currentCheckingCharacter)
-                    {
-                        winerPositionsStringCode[charactersinrow] = $"{x+i}&{y+i}";
-                        charactersinrow++;
-                    }
-                    else return;
-                });
-            });
-        });
+        for(int y = 0; y<board_x_size-4;y++){
+            for(int x = 0; x<board_y_size-4;x++){
+                if(board[x,y] == EMPTY) continue;
 
-        if(charactersinrow == 4) return (status:true,winnerMark:currentCheckingCharacter, winerPositionsStringCode);
+                if(board[x+1,y+1] == board[x,y] &&  board[x+2,y+2] == board[x,y] && board[x+3,y+3] == board[x,y])
+                {
+                    winerPositionsStringCode[0] = $"{x}&{y}";
+                    winerPositionsStringCode[1] = $"{x+1}&{y+1}";
+                    winerPositionsStringCode[2] = $"{x+2}&{y+2}";
+                    winerPositionsStringCode[3] = $"{x+3}&{y+3}";
 
+                    return (status:true,winnerMark:board[x,y], winerPositionsStringCode);
+                }
+            }
+        }
+     
         #endregion
-
         #region Sprawdzanie na przekątnych malejąco
         /*
                 -   -   -   -   -   
@@ -190,35 +175,23 @@ public class Engine
                 -   -   X   -   -   
                 -   -   -   X   -   
             */        
-        currentCheckingCharacter = EMPTY;
-        checkingCharacter = Char.Parse("-");
-        charactersinrow = 0;
-        Enumerable.Range(3,max_Y_scope).ToList().ForEach(y=>
-        {
-            if(charactersinrow == 4) return;
-            Enumerable.Range(0,max_X_scope).ToList().ForEach(x=>
-            {
-                if(charactersinrow == 4) return;
-                if(board[x,y] == EMPTY) return;
-                currentCheckingCharacter = board[x,y];
-                charactersinrow = 0;
-                Enumerable.Range(0,4).ToList().ForEach(i=>
-                {
-                    //Console.Write($"[{x+i},{y-i}] ");
-                    if(board[x+i,y-i] == currentCheckingCharacter)
-                    {
-                        winerPositionsStringCode[charactersinrow] = $"{x+i}&{y-i}";
-                        charactersinrow++;
-                    }
-                    else return;
-                });
-            });
-        });
+        for(int y=3;y<board_y_size;y++){
+            for(int x=0;x<board_x_size-4;x++){
+                if(board[x,y] == EMPTY) continue;
 
-        if(charactersinrow == 4) return (status:true,winnerMark:currentCheckingCharacter, winerPositionsStringCode);
+                if(board[x+1,y-1] == board[x,y] &&  board[x+2,y-2] == board[x,y] && board[x+3,y-3] == board[x,y])
+                {
+                    winerPositionsStringCode[0] = $"{x}&{y}";
+                    winerPositionsStringCode[1] = $"{x+1}&{y-1}";
+                    winerPositionsStringCode[2] = $"{x+2}&{y-2}";
+                    winerPositionsStringCode[3] = $"{x+3}&{y-3}";
+
+                    return (status:true,winnerMark:board[x,y], winerPositionsStringCode);
+                }
+            }
+        }
 
         #endregion
-       
         #region Sprawdzanie pionowe
         
           /*
@@ -229,34 +202,18 @@ public class Engine
             -   X   -   -   - 
             */
 
-        for(int i = 0; i<board_x_size;i++)
-        {
-            checkingCharacter = Char.Parse("-");
-            currentCheckingCharacter = Char.Parse("-");
+         for(int y=3;y<board_y_size;y++){
+            for(int x=0;x<board_x_size;x++){
+                if(board[x,y] == EMPTY) continue;
 
-            charactersinrow = 1;
-            for(int j = 0; j<board_y_size;j++)
-            {
-                currentCheckingCharacter = board[i,j];
-                if(currentCheckingCharacter == checkingCharacter)
+                if(board[x,y-1] == board[x,y] &&  board[x,y-2] == board[x,y] && board[x,y-3] == board[x,y])
                 {
-                    if(checkingCharacter != Char.Parse("-"))   
-                    {
-                        winerPositionsStringCode[charactersinrow] = $"{i}&{j}";
-                        charactersinrow ++;
-                       // Console.WriteLine(winerPositionsStringCode[charactersinrow-1]);
-                    }
+                    winerPositionsStringCode[0] = $"{x}&{y}";
+                    winerPositionsStringCode[1] = $"{x}&{y-1}";
+                    winerPositionsStringCode[2] = $"{x}&{y-2}";
+                    winerPositionsStringCode[3] = $"{x}&{y-3}";
 
-                    if(charactersinrow == 4)
-                    {
-                        return (status:true,winnerMark:currentCheckingCharacter, winerPositionsStringCode);
-                    }   
-                }
-                else
-                {       
-                    checkingCharacter = currentCheckingCharacter;
-                    charactersinrow = 1; 
-                    winerPositionsStringCode[0] = $"{i}&{j}";
+                    return (status:true,winnerMark:board[x,y], winerPositionsStringCode);
                 }
             }
         }
@@ -271,46 +228,28 @@ public class Engine
             -   -   -   -   - 
             -   -   -   -   - 
             */
-        for(int i = 0; i<board_y_size;i++)
-        {
-            checkingCharacter = Char.Parse("-");
-            currentCheckingCharacter = Char.Parse("-");
+        for(int y=0;y<board_y_size;y++){
+            for(int x=0;x<board_x_size-4;x++){
+                if(board[x,y] == EMPTY) continue;
 
-            charactersinrow = 1;
-            for(int j = 0; j<board_x_size;j++)
-            {
-                currentCheckingCharacter = board[j,i];
-                if(currentCheckingCharacter == checkingCharacter)
+                if(board[x+1,y] == board[x,y] &&  board[x+2,y] == board[x,y] && board[x+3,y] == board[x,y])
                 {
-                    if(checkingCharacter != Char.Parse("-"))   
-                    {
-                        winerPositionsStringCode[charactersinrow] = $"{j}&{i}";
-                        charactersinrow ++;
-                       // Console.WriteLine(winerPositionsStringCode[charactersinrow-1]);
-                    }
+                    winerPositionsStringCode[0] = $"{x}&{y}";
+                    winerPositionsStringCode[1] = $"{x+1}&{y}";
+                    winerPositionsStringCode[2] = $"{x+2}&{y}";
+                    winerPositionsStringCode[3] = $"{x+3}&{y}";
 
-                    if(charactersinrow == 4)
-                    {
-                        return (status:true,winnerMark:currentCheckingCharacter, winerPositionsStringCode);
-                    }   
-                }
-                else
-                {       
-                    checkingCharacter = currentCheckingCharacter;
-                    charactersinrow = 1; 
-                    winerPositionsStringCode[0] = $"{j}&{i}";
+                    return (status:true,winnerMark:board[x,y], winerPositionsStringCode);
                 }
             }
         }
         #endregion
         // checking if there is any left space on board
        
-       
-        foreach(char el in board)
-        {
-            if(el == EMPTY)
-                return (status:false,winnerMark:null,null);
-        };
+       for(int x=0,y=board_y_size-1; x<board_x_size; x++)
+       {
+            if(board[x,y] == EMPTY) return (status:false,winnerMark:null,null);
+       }
 
         return (status:true,winnerMark:null,null);
     }
