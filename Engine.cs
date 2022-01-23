@@ -167,6 +167,13 @@ public class Engine{
     }
     public static (bool status, char? winnerMark, string[]? winerPositions) IsGameEnded(char[,] board)
     {
+        // draw checking
+        int[] slots = GetAvailableSlots(board).ToArray();
+                if(slots.Length == 0){
+                  //  Console.WriteLine("emmm?");
+                    return (true, null, null); // remis
+                }
+        
         int board_x_size = board.GetLength(0);
         int board_y_size = board.GetLength(1);
         string[] winerPositionsStringCode = new string[4];

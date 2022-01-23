@@ -6,19 +6,11 @@ namespace ConnectFour_MCTS
     {
         public static async Task Main(string[] args)
         {
-            for(int it=0;it<20;it++)
-            {
-
-           
-            Console.WriteLine($"-------------------GAME[{it}]-----------------------");
-
-
             Engine.player1_mark = Char.Parse("O");
             Engine.player2_mark = Char.Parse("X");
             Engine.columns = 7;
             Engine.rows = 6;
             var Game = new Engine();
-
 
             MCTS _mcts_1 = new MCTS();
             _mcts_1.AIBot_Id = 1;
@@ -32,21 +24,24 @@ namespace ConnectFour_MCTS
             // Engine.MakeMove(3,2,Game.board);
             while(GameOver.status == false)
             {
-                if(GameOver.status == true) break;
+                
                 //----------------------------- [PLAYER 1 = 'O'] -----------------------------
                 //Console.WriteLine("Player 1 ['O'] = BOT");
                 // create working copy of current board
-
-                var searching = await _mcts_1.SearchAsync(Game.board, _timeout: 250);
-                //Statistics(searching);
+                int searching_timeout = 3500;
+                
+                var searching = await _mcts_1.SearchAsync(Game.board, _timeout: searching_timeout);
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Statistics(searching,searching_timeout);
                 var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
+                Console.ResetColor();
 
                 // wykonanie ruchu przez bota
                 Game.MakeMove(botMove, _mcts_1.AIBot_Id);
                 Engine.DrawBoard(Game.board);
                 GameOver = Engine.IsGameEnded(Game.board);
-
                 if(GameOver.status == true) break;
+                
             //    //----------------------------- [PLAYER 2 = 'X'] -----------------------------
             //     //Console.WriteLine("Player 2 ['X'] = BOT");
             //     searching = await _mcts_2.SearchAsync(Game.board, _timeout: 250);
@@ -60,16 +55,20 @@ namespace ConnectFour_MCTS
                 List<int> availableMoves = Engine.GetLegalMovesList(Game.board);
                 availableMoves.ForEach(x=>choices+=$"[{x}] ");
                 int playerMove = -1;
+                Console.WriteLine($"DOSTĘPNE RUCHY: \n{choices}: ");
                 while(true)
                 {
-                    Console.WriteLine($"DOSTĘPNE RUCHY: {choices} : ");
                     if(Int32.TryParse(Console.ReadLine(),out playerMove) == false)
                     {
                         Console.WriteLine("Błąd:niedozwolony znak!");
                         continue;
                     }
-
-                    if(availableMoves.Contains(playerMove) == false)
+                    if(playerMove == 666)
+                    {
+                        playerMove = await Call_AI_HintAsync(currentState:Game.board, yourID:_mcts_1.EnemyID,searching_timeout);
+                        continue;
+                    }
+                    if(availableMoves.Contains(playerMove) == false && playerMove!=666)
                     {
                         Console.WriteLine($"Błąd:[{playerMove}] jest niedozwolonym ruchem.");
                         continue;
@@ -81,24 +80,113 @@ namespace ConnectFour_MCTS
                 Game.MakeMove(playerMove,_mcts_1.EnemyID);
                 Engine.DrawBoard(Game.board);
                 Console.WriteLine();
+                GameOver = Engine.IsGameEnded(Game.board);
+                if(GameOver.status == true) break;
 
             }
-            Engine.DrawBoard(Game.board);
+
             Console.WriteLine();
-       }
+
+            Console.WriteLine("Press any key to exit.");
             Console.ReadLine();
         }
+       
 
-        private static void Statistics(Node searching)
+        private static async Task<int> Call_AI_HintAsync(char[,] currentState, int yourID, int timeout)
         {
-            foreach (var child in searching.parent.childrens)
-            {
-                Console.Write($"Value:{child.value} ({child.victoriesCount}/{child.visits}) [win/visit]");
-                Engine.DrawBoard(child.gameState.boardArray);
+            var copyBoard = (char[,])currentState.Clone();
+            MCTS _mcts_2 = new MCTS();
+            _mcts_2.AIBot_Id = yourID;
+            _mcts_2.EnemyID = yourID == 1 ? 2 : 1;
+
+            var searching = await _mcts_2.SearchAsync(copyBoard, timeout);
+            var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
+            ShowPickProbablity(copyBoard, searching, botMove, full:false);
+            return botMove;
+        }
+
+        private static void ShowPickProbablity(char[,] copyBoard, Node searching, int botMove, bool full = true)
+        {
+            /*
+                            [0]:80.65% [1]:10.55% ....
+                        */
+
+            var availableMoves = Engine.GetLegalMovesList(copyBoard);
+            var totalVisits = searching.parent.visits;
+
+            double probablity = 0.0;
+                if(full)
+                {
+                availableMoves.ForEach(x =>
+                {   
+                    probablity = (((double)(searching.parent.childrens.First(child => child.gameState.latestMovement == x).visits) / totalVisits) * 100);
+                    if (botMove == x)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.Write($"[{x}]:{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}% ");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkBlue;
+                        Console.Write($"[{x}]:{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}% ");
+                        Console.ResetColor();
+                    }
+                });
             }
-            Console.WriteLine("\n\n------------------------------------");
-            Console.WriteLine($"liczba symulacji:{searching.parent.visits} (1000ms)");
-            Console.WriteLine("------------------------------------");
+            else
+            {
+                /*
+                    CODE: 666
+
+                    ╔═══════════════════════════════════╗
+                    ║    Best option is: 4 [~ 8,8%]     ║
+                    ╚═══════════════════════════════════╝
+
+                */
+                probablity = (((double)(searching.parent.childrens.First(child => child.gameState.latestMovement == botMove).visits) / totalVisits) * 100);
+
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.Write($"    Best option is: ");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($"{botMove} [~{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}%]");
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.Write("     ║\n");
+                Console.WriteLine("╚═══════════════════════════════════╝");
+                Console.ResetColor();
+            }
+            Console.WriteLine();
+        }
+
+        private static void Statistics(Node searching, int searching_timeout)
+        {
+            // foreach (var child in searching.parent.childrens)
+            // {
+            //     Console.WriteLine($"Value:{child.value},\t({child.value+child.drawsCount}/{child.visits}),\tUCB1:{child.UCB1Score} ");
+            //    // Engine.DrawBoard(child.gameState.boardArray);
+            // }
+            /*
+            ╔═══════════════════════════════════╗
+            Simulations:    25551 (3500ms)
+            ╚═══════════════════════════════════╝
+            */
+            var simCount = searching.parent.visits;
+            string intFormat = "";
+            if(simCount >= 0 && simCount <= 999)
+            {
+                intFormat = "";
+            }
+            else if(simCount >= 1_000 && simCount <= 999_999)
+            {
+                intFormat = "0`000";
+            }
+            else if(simCount >= 1_000_000 && simCount <= 999_999_999)
+            {
+                intFormat = "0`000`000";
+            }
+            
+            Console.WriteLine($"  Simulations: {simCount.ToString(intFormat).PadLeft(9)} ({searching_timeout}ms)  ");
+            Console.WriteLine("╚═══════════════════════════════════╝");
         }
 
         public static void TestingExamples(Engine Game)
