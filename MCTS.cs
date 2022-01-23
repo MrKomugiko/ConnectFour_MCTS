@@ -10,8 +10,8 @@ namespace ConnectFour_MCTS
         public int EnemyID { get; internal set; }
         public int iterations = 1_000_000;
         public Random rand = new Random();
-        static int simulationsCount = 0;
-        static int MaxDepth = 0;
+        public static int SimulationsCount = 0;
+        public static int MaxDepth = 0;
 
         public static bool CalculationsInProgress = false;
         public async Task<Node> SearchAsync(char[,] _board, int _timeout)
@@ -19,8 +19,7 @@ namespace ConnectFour_MCTS
             //Console.WriteLine("Searching started...");
             CalculationsInProgress = true;
             MaxDepth = 0;
-            simulationsCount = 0;
-            simulationsCount = 0;
+            SimulationsCount = 0;
 
             //new Thread(new ThreadStart(() => Loading(_timeout))).Start();
             
@@ -52,15 +51,16 @@ namespace ConnectFour_MCTS
                 Backpropagate(node, score);
             }
 
+            CalculationsInProgress = false;
+            LoadingTask.Wait();
             // DEBUG show statistics
             // foreach(var child in root.childrens)
             // {
             //     Console.WriteLine($"Value: {child.value}\tVisits: {child.visits}\tUCB1: {child.UCB1Score}");
-            //     //child.board.DrawBoard();
+            //     Engine.DrawBoard(child.gameState.boardArray);
             // }
-            //Console.WriteLine("max reached depth = "+MaxDepth+" / game simulations: "+simulationsCount);
-            CalculationsInProgress = false;
-            LoadingTask.Wait();
+            // Console.WriteLine("max reached depth = "+MaxDepth+" / game simulations: "+simulationsCount);
+            // Console.WriteLine();
             return GetBestMove(root, 0);
 
         }
@@ -81,12 +81,12 @@ namespace ConnectFour_MCTS
 
             double lnOftotalVisits = Math.Log(GetRoot(_node).visits);
 
-            double explorationConst = 2;
+            double explorationConst = exploration;
             foreach (var child in _node.childrens)
             {
 
                 double averageScorePerVisitCurrentNode = (child.value) / (double)child.visits;
-                double UCBScore = averageScorePerVisitCurrentNode + (Math.Sqrt(2) * (Math.Sqrt(lnOftotalVisits / (double)child.visits)));
+                double UCBScore = averageScorePerVisitCurrentNode + (explorationConst * (Math.Sqrt(lnOftotalVisits / (double)child.visits)));
 
                 child.UCB1Score = (float)UCBScore;
 
@@ -123,7 +123,7 @@ namespace ConnectFour_MCTS
 
         public Node Expand(Node parent)
         {
-            List<int> possibleMovements = Engine.GetLegalMovesList(parent.gameState.boardArray);
+            List<int> possibleMovements = Engine.GetLegalMovesList(parent.gameState.boardArray).ToList();
             List<int> usedMovesInChilds = parent.childrens.Select(x => (int)x.gameState.latestMovement).ToList();
             usedMovesInChilds.ForEach(x => possibleMovements.Remove(x));
 
@@ -146,20 +146,17 @@ namespace ConnectFour_MCTS
             {
                 if (result.winnerMark != null)
                 {
-                    // check if bot win match based on winner mark
                     int WINNER_ID = result.winnerMark == Engine.player1_mark ? 1 : 2;
 
                     if (WINNER_ID != AIBot_Id)
                     {
                         //Console.WriteLine("Przegrałbys tak czy siak, przeciwnik moze wygrac w nastepnym ruchu na 100%");
-                        newNode.parent.IsTerminated = true;
-                        return parent;
+                        parent.IsTerminated = true;
+                        parent.value = -1_000_000;
+                        return newNode;
                     }
                 }
             }
-            // Console.WriteLine("# EXPANSION");
-
-            //Engine.DrawBoard(newNode.gameState.boardArray);
             return newNode;
         }
 
@@ -183,43 +180,27 @@ namespace ConnectFour_MCTS
 
         private int Rollout(GameState game)
         {
-
-            //zrobienie kopi -> nie dzialamy na orginale, to tylko symulacja
-            //SYMULACJA+
-            // Console.WriteLine("# SIMULATION / ROLLOUT");
             var COPYIED_GameState = new GameState(game.boardArray, game.latestMovement, game.latestPlayer);
-
             var result = Engine.Simulate(COPYIED_GameState.latestPlayer, COPYIED_GameState.boardArray);
 
-            MCTS.simulationsCount++;
-            if (result.status == true)
+            if (result.status)
             {
-                // Console.WriteLine("gra w całości rozegrana");
                 if (result.winnerMark != null)
                 {
-                    //  Console.WriteLine("zwyciezca został wybrany");
                     var winnerID = result.winnerMark == Engine.player1_mark ? 1 : 2;
                     if (winnerID == AIBot_Id)
-                    {
                         return 1;
-                    }
                     else
-                    {
                         return -1;
-                    }
                 }
                 else
                 {
-                    // Console.WriteLine("Brak zwyciezcy = REMIS");
                     return 0;
                 }
             }
 
             throw new Exception("nie powinno sie zdażyc ? bo gra nadal trwa");
         }
-
-
-
         public static void ClearCurrentConsoleLine()
         {
             int currentLineCursor = Console.CursorTop;

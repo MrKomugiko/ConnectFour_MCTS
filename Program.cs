@@ -10,84 +10,41 @@ namespace ConnectFour_MCTS
             Engine.player2_mark = Char.Parse("X");
             Engine.columns = 7;
             Engine.rows = 6;
-            var Game = new Engine();
 
             MCTS _mcts_1 = new MCTS();
             _mcts_1.AIBot_Id = 1;
             _mcts_1.EnemyID = 2;
 
-            // MCTS _mcts_2 = new MCTS();
-            // _mcts_2.AIBot_Id = 2;
-            // _mcts_2.EnemyID = 1;
+             MCTS _mcts_2 = new MCTS();
+            _mcts_2.AIBot_Id = 2;
+            _mcts_2.EnemyID = 1;
 
-            (bool status, char? winnerMark, string[]? winerPositions) GameOver = (false, null, null);
-            // Engine.MakeMove(3,2,Game.board);
-            while(GameOver.status == false)
-            {
-                
-                //----------------------------- [PLAYER 1 = 'O'] -----------------------------
-                //Console.WriteLine("Player 1 ['O'] = BOT");
-                // create working copy of current board
-                int searching_timeout = 1000;
-                
-                var searching = await _mcts_1.SearchAsync(Game.board, _timeout: searching_timeout);
-                Console.ForegroundColor = ConsoleColor.DarkCyan;
-                Statistics(searching,searching_timeout);
-                var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
-                Console.ResetColor();
 
-                // wykonanie ruchu przez bota
-                Game.MakeMove(botMove, _mcts_1.AIBot_Id);
-                Engine.DrawBoard(Game.board);
-                GameOver = Engine.IsGameEnded(Game.board);
-                if(GameOver.status == true) break;
+            int searching_timeout = 1500;
+            //
+                var Game = new Engine();
+                (bool status, char? winnerMark, string[]? winerPositions) GameOver = (false, null, null);
                 
-            //    //----------------------------- [PLAYER 2 = 'X'] -----------------------------
-            //     //Console.WriteLine("Player 2 ['X'] = BOT");
-            //     searching = await _mcts_2.SearchAsync(Game.board, _timeout: 250);
-            //     //Statistics(searching);
-            //     botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
-            //     Game.MakeMove(botMove, _mcts_2.AIBot_Id);
-            //     //Engine.DrawBoard(Game.board);
-            //     GameOver = Engine.IsGameEnded(Game.board);
-                
-                string choices ="";
-                List<int> availableMoves = Engine.GetLegalMovesList(Game.board);
-                availableMoves.ForEach(x=>choices+=$"[{x}] ");
-                int playerMove = -1;
-                Console.WriteLine($"DOSTĘPNE RUCHY: \n{choices}: ");
-                while(true)
+                while(GameOver.status == false)
                 {
-                    if(Int32.TryParse(Console.ReadLine(),out playerMove) == false)
-                    {
-                        Console.WriteLine("Błąd:niedozwolony znak!");
-                        continue;
-                    }
-                    if(playerMove == 666)
-                    {
-                        playerMove = await Call_AI_HintAsync(currentState:Game.board, yourID:_mcts_1.EnemyID,searching_timeout);
-                        continue;
-                    }else if(playerMove == 112)
-                    {
-                        playerMove = await Call_AI_HintAsync(currentState:Game.board, yourID:_mcts_1.EnemyID,searching_timeout,true);
-                        continue;
-                    }
-                    if(availableMoves.Contains(playerMove) == false && playerMove!=666)
-                    {
-                        Console.WriteLine($"Błąd:[{playerMove}] jest niedozwolonym ruchem.");
-                        continue;
-                    }
+                    // Player 1
+                    GameOver = await BOT_(Game, _mcts_1, GameOver, searching_timeout);
+                    if (GameOver.status == true) break;
 
-                    break;
+                    // Player 2
+                    GameOver = await BOT_(Game, _mcts_2, GameOver, searching_timeout);
+                    if (GameOver.status == true) break;
+
+                    // GameOver = await PLAYER_(Game, _mcts_1, GameOver, searching_timeout);
+                    // if (GameOver.status == true) break;
+
                 }
-
-                Game.MakeMove(playerMove,_mcts_1.EnemyID);
+                
+                Console.WriteLine("------------------------Wynik--------------------------");
                 Engine.DrawBoard(Game.board);
-                Console.WriteLine();
-                GameOver = Engine.IsGameEnded(Game.board);
-                if(GameOver.status == true) break;
+                Console.WriteLine("------------------------Wynik---------------------------");
 
-            }
+           // }
 
             Console.WriteLine();
             Console.WriteLine("Press 'x' to exit.");
@@ -99,7 +56,73 @@ namespace ConnectFour_MCTS
                 }
             }
         }
-       
+
+        private static async Task<(bool status, char? winnerMark, string[] winerPositions)> BOT_(Engine Game, MCTS _mcts_1, (bool status, char? winnerMark, string[] winerPositions) GameOver, int searching_timeout)
+        {
+            Console.WriteLine($"╔═══════════════════════════════════╗");
+            Console.WriteLine($"║     [AI] Player-{_mcts_1.AIBot_Id} ('{(_mcts_1.AIBot_Id == 1 ? Engine.player1_mark : Engine.player2_mark)}') Turn      ║");
+            Console.WriteLine($"╚═══════════════════════════════════╝");
+
+            var searching = await _mcts_1.SearchAsync(Game.board, _timeout: searching_timeout);
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Statistics(searching, searching_timeout);
+            var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
+            Console.ResetColor();
+
+            // wykonanie ruchu przez bota
+            Game.MakeMove(botMove, _mcts_1.AIBot_Id);
+            GameOver = Engine.DrawBoard(Game.board);
+            //GameOver = Engine.IsGameEnded(Game.board);
+
+            return GameOver;
+        }
+        private static async Task<(bool status, char? winnerMark, string[] winerPositions)> PLAYER_(Engine Game, MCTS _mcts_1, (bool status, char? winnerMark, string[] winerPositions) GameOver, int searching_timeout)
+        {
+            Console.WriteLine($"╔═══════════════════════════════════╗");
+            Console.WriteLine($"║       Player-{_mcts_1.EnemyID} ('{(_mcts_1.EnemyID == 1 ? Engine.player1_mark : Engine.player2_mark)}') Turn         ║");
+            Console.WriteLine($"╚═══════════════════════════════════╝");
+
+            string choices = "";
+            int[] availableMoves = Engine.GetLegalMovesList(Game.board);
+            foreach (int move in Engine.GetLegalMovesList(Game.board))
+                choices += $"[{move}] ";
+
+            int playerMove = -1;
+            Console.WriteLine($"DOSTĘPNE RUCHY: \n{choices}: ");
+            while (true)
+            {
+                if (Int32.TryParse(Console.ReadLine(), out playerMove) == false)
+                {
+                    Console.SetCursorPosition(0, Console.CursorTop - 1);
+                    ClearCurrentConsoleLine();
+                    Console.WriteLine("Błąd:niedozwolony znak!");
+                    continue;
+                }
+                Console.SetCursorPosition(0, Console.CursorTop - 1);
+                ClearCurrentConsoleLine();
+                if (playerMove == 666)
+                {
+                    playerMove = await Call_AI_HintAsync(currentState: Game.board, yourID: _mcts_1.EnemyID, searching_timeout);
+                    continue;
+                }
+                else if (playerMove == 112)
+                {
+                    playerMove = await Call_AI_HintAsync(currentState: Game.board, yourID: _mcts_1.EnemyID, searching_timeout, true);
+                    continue;
+                }
+                if (availableMoves.Contains(playerMove) == false && playerMove != 666)
+                {
+                    Console.WriteLine($"Błąd:[{playerMove}] jest niedozwolonym ruchem.");
+                    continue;
+                }
+
+                GameOver = Engine.DrawBoard(Game.board);
+                break;
+            }
+
+            Console.WriteLine();
+            return GameOver;
+        }
 
         private static async Task<int> Call_AI_HintAsync(char[,] currentState, int yourID, int timeout, bool isExtended = false)
         {
@@ -113,13 +136,11 @@ namespace ConnectFour_MCTS
             ShowPickProbablity(copyBoard, searching, botMove, full:isExtended);
             return botMove;
         }
-
         private static void ShowPickProbablity(char[,] copyBoard, Node searching, int botMove, bool full)
         {
-            var availableMoves = Engine.GetLegalMovesList(copyBoard);
-            var totalVisits = searching.parent.visits;
-
+            int totalVisits = searching.parent.visits;
             double probablity = 0.0;
+ 
             if(full)
                 {
                      /*
@@ -223,20 +244,19 @@ namespace ConnectFour_MCTS
                 Console.ResetColor();
             }
         }
-
         private static void Statistics(Node searching, int searching_timeout)
         {
-            // foreach (var child in searching.parent.childrens)
-            // {
-            //     Console.WriteLine($"Value:{child.value},\t({child.value+child.drawsCount}/{child.visits}),\tUCB1:{child.UCB1Score} ");
-            //    // Engine.DrawBoard(child.gameState.boardArray);
-            // }
+            foreach (var child in searching.parent.childrens)
+            {
+                Console.WriteLine($"Value:{child.value}\tVisits:{child.visits}\t[v:{child.victoriesCount}/d:{child.drawsCount}/l:{child.losesCount}],\tUCB1:{child.UCB1Score} ");
+                Engine.DrawBoard(child.gameState.boardArray);
+            }
             /*
             ╔═══════════════════════════════════╗
             Simulations:    25551 (3500ms)
             ╚═══════════════════════════════════╝
             */
-            var simCount = searching.parent.visits;
+            var simCount = MCTS.SimulationsCount;
             string intFormat = "";
             if(simCount >= 0 && simCount <= 999)
             {
@@ -254,7 +274,6 @@ namespace ConnectFour_MCTS
             Console.WriteLine($"║  Simulations: {simCount.ToString(intFormat).PadLeft(10)} ({(searching_timeout+"ms)").ToString().PadRight(8)}║");
              Console.WriteLine("╚═══════════════════════════════════╝");
         }
-
         public static void TestingExamples(Engine Game)
         {
             char[,] board = Game.board;
@@ -335,6 +354,13 @@ namespace ConnectFour_MCTS
             char[,] board_copy_6 = (char[,])board.Clone();
             board_copy_6[0, 0] = Char.Parse("O");
             board_copy_6[5, 5] = Char.Parse("X");
+        }
+        public static void ClearCurrentConsoleLine()
+        {
+            int currentLineCursor = Console.CursorTop;
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', Console.WindowWidth));
+            Console.SetCursorPosition(0, currentLineCursor);
         }
     }
 }

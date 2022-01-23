@@ -1,6 +1,7 @@
 using ConnectFour_MCTS;
-
-public class Engine{
+using System.Linq;
+public class Engine
+{
     public static int rows;
     public static int columns;
     public static readonly char EMPTY = Char.Parse("-");
@@ -11,23 +12,8 @@ public class Engine{
     {
         board = NewClearBoard();
     }
-    // public GameState SetMove(int selectedSlot, int playerID, char[,] _boardCopy = null)
-    // {
-    //     _boardCopy??=this.board;
-    //     // find spot in seleccted slot
-    //     for(int y=0;y<rows-1;y++)
-    //     {
-    //         if(_boardCopy[selectedSlot,y] == EMPTY){
-    //             _boardCopy[selectedSlot,y] = playerID==1?player1_mark:player2_mark;
-                
-    //             break;
-    //         }
-    //     }
-    //     return new GameState(_boardArray:_boardCopy,_latestMovement:selectedSlot,_latestPlayer:playerID);
-    // }
     public void MakeMove(int selectedSlot, int playerID)
     {
-        // find spot in seleccted slot
         for(int y=0;y<=rows-1;y++)
         {
             if(this.board[selectedSlot,y] == EMPTY){
@@ -38,7 +24,6 @@ public class Engine{
     }
     public static void MakeMove(int selectedSlot, int playerID, char[,] _boardCopy)
     {
-        // find spot in seleccted slot
         for(int y=0;y<=rows-1;y++)
         {
             if(_boardCopy[selectedSlot,y] == EMPTY){
@@ -47,29 +32,16 @@ public class Engine{
             }
         }
     }
-    public static List<int> GetAvailableSlots(char[,] _boardCopy)
-    {
-        List<int> slots = new(); 
-        for (int x = 0; x < columns; x++)
-        {
-            // check if space for select
-            if(_boardCopy[x,rows-1] == EMPTY)
-            {
-                slots.Add(x);
-            }
-        }
-
-        return slots;
-    }
-    public static void DrawBoard(char[,] _boardCopy)
+    private static List<int> legalMoves = new();
+    public static (bool status, char? winnerMark, string[]? winerPositions) DrawBoard(char[,] _boardCopy)
     {
         var result = IsGameEnded(_boardCopy);
         if(result.winerPositions != null){
             List<string> winCoordinates = result.winerPositions.ToList();
-       
             bool goodMark = false;
             for (int y = rows - 1; y >= 0; y--)
-            {
+            { 
+                Console.Write("".PadLeft(8));
                 for (int x = 0; x < columns; x++)
                 {
                     goodMark = false;
@@ -86,43 +58,44 @@ public class Engine{
                     if (goodMark)
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.Write($" {(_boardCopy[x, y])}");
+                        Console.Write($"{(_boardCopy[x, y])}  ");
                         Console.ResetColor();
                     }
                     else
                     {
-                        Console.Write($" {(_boardCopy[x, y])}");
+                        Console.Write($"{(_boardCopy[x, y])}  ");
                     }
                 }
                 Console.WriteLine();
             }
+            Console.WriteLine("winner is = " + result.winnerMark);
         }
         else
         {
             for (int y = rows - 1; y >= 0; y--)
             {
+                Console.Write("".PadLeft(8));
                 for (int x = 0; x < columns; x++)
                 {
-                    Console.Write($" {(_boardCopy[x, y])}");
+                    Console.Write($"{(_boardCopy[x, y])}  ");
                 }
                 Console.WriteLine();
             }
         }
-        // Console.WriteLine("is game ended? = " + result.status);
-        // Console.WriteLine("winner is = " + result.winnerMark);
+        return result;
     }
-
-    internal static List<int> GetLegalMovesList(char[,] board)
+    internal static int[] GetLegalMovesList(char[,] board)
     {
-        // liczba kolumn
-        List<int> legalMoves = new();
-        Enumerable.Range(0,columns).ToList().ForEach(x=>{
+       legalMoves.Clear();
+        for (int x = 0; x < columns; x++)
+        {
             if(board[x,rows-1] == EMPTY)
             {
                 legalMoves.Add(x);
             }
-        });
-        return legalMoves;
+        }
+
+        return legalMoves.ToArray();
     }
 
     private char[,] NewClearBoard() 
@@ -136,39 +109,30 @@ public class Engine{
         }
         return board;
     } 
-    public static (bool status, char? winnerMark, string[]? winerPositions) Simulate(int FirstPlayerID = 1, char[,] _boardCopy = null)
+    public static Random rand = new Random();
+    public static (bool status, char? winnerMark, string[]? winerPositions) Simulate(int FirstPlayerID, char[,] _board)
     {
-        var rand = new Random();
-        int playerTurn = FirstPlayerID;
-        bool isGameEnded = false;
-        (bool status, char? winnerMark, string[]? winerPositions) result = (false,null,null);
-        //DrawBoard(_boardCopy);
-        while(isGameEnded==false)
-        {
-            // 1. select number from 0 to (x-max)
-                int[] slots = GetAvailableSlots(_boardCopy).ToArray();
-                if(slots.Length == 0){
-                  //  Console.WriteLine("emmm?");
-                    return (true, null, null); // remis
-                }
+        MCTS.SimulationsCount++;
 
-                int selectedSlot = slots[rand.Next(0,slots.Length)];
-                //Console.WriteLine($"Move selected:[{selectedSlot}]");
-                playerTurn = playerTurn==1?2:1;
-                MakeMove(selectedSlot,playerID:playerTurn,_boardCopy);
-           
-                result = IsGameEnded(_boardCopy);
-                isGameEnded = result.status;
-                // zmiana gracza
-           
+        int playerTurn = FirstPlayerID;
+        (bool status, char? winnerMark, string[]? winerPositions) result = (false,null,null);
+        int[] slots;
+        while(result.status==false)
+        {
+            slots = GetLegalMovesList(_board);
+            if(slots.Length == 0){
+                return (true, null, null); // remis
+            }
+
+            MakeMove(slots[rand.Next(0,slots.Length)],playerTurn==1?2:1,_board);
+            result = IsGameEnded(_board);
         }
-        //DrawBoard(_boardCopy);
         return result;
     }
     public static (bool status, char? winnerMark, string[]? winerPositions) IsGameEnded(char[,] board)
     {
         // draw checking
-        int[] slots = GetAvailableSlots(board).ToArray();
+        int[] slots = GetLegalMovesList(board);
                 if(slots.Length == 0){
                   //  Console.WriteLine("emmm?");
                     return (true, null, null); // remis
@@ -340,14 +304,14 @@ public class Engine{
         }
         #endregion
         // checking if there is any left space on board
-        foreach(var el in board)
+       
+       
+        foreach(char el in board)
         {
-            if(el.ToString() == "-")
-            {
+            if(el == EMPTY)
                 return (status:false,winnerMark:null,null);
-            }
-        }
-      
+        };
+
         return (status:true,winnerMark:null,null);
     }
 }
