@@ -85,8 +85,8 @@ namespace ConnectFour_MCTS
             foreach (var child in _node.childrens)
             {
 
-                double averageScorePerVisitCurrentNode = (child.value + child.drawsCount) / (double)child.visits;
-                double UCBScore = averageScorePerVisitCurrentNode + (explorationConst * (Math.Sqrt(lnOftotalVisits / (double)child.visits)));
+                double averageScorePerVisitCurrentNode = (child.value) / (double)child.visits;
+                double UCBScore = averageScorePerVisitCurrentNode + (Math.Sqrt(2) * (Math.Sqrt(lnOftotalVisits / (double)child.visits)));
 
                 child.UCB1Score = (float)UCBScore;
 

@@ -28,7 +28,7 @@ namespace ConnectFour_MCTS
                 //----------------------------- [PLAYER 1 = 'O'] -----------------------------
                 //Console.WriteLine("Player 1 ['O'] = BOT");
                 // create working copy of current board
-                int searching_timeout = 3500;
+                int searching_timeout = 1000;
                 
                 var searching = await _mcts_1.SearchAsync(Game.board, _timeout: searching_timeout);
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
@@ -67,6 +67,10 @@ namespace ConnectFour_MCTS
                     {
                         playerMove = await Call_AI_HintAsync(currentState:Game.board, yourID:_mcts_1.EnemyID,searching_timeout);
                         continue;
+                    }else if(playerMove == 112)
+                    {
+                        playerMove = await Call_AI_HintAsync(currentState:Game.board, yourID:_mcts_1.EnemyID,searching_timeout,true);
+                        continue;
                     }
                     if(availableMoves.Contains(playerMove) == false && playerMove!=666)
                     {
@@ -86,13 +90,18 @@ namespace ConnectFour_MCTS
             }
 
             Console.WriteLine();
-
-            Console.WriteLine("Press any key to exit.");
-            Console.ReadLine();
+            Console.WriteLine("Press 'x' to exit.");
+            while(true)
+            {
+                string action = Console.ReadLine();
+                if(action.ToLower() == "x"){
+                    break; // EXIT
+                }
+            }
         }
        
 
-        private static async Task<int> Call_AI_HintAsync(char[,] currentState, int yourID, int timeout)
+        private static async Task<int> Call_AI_HintAsync(char[,] currentState, int yourID, int timeout, bool isExtended = false)
         {
             var copyBoard = (char[,])currentState.Clone();
             MCTS _mcts_2 = new MCTS();
@@ -101,38 +110,96 @@ namespace ConnectFour_MCTS
 
             var searching = await _mcts_2.SearchAsync(copyBoard, timeout);
             var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
-            ShowPickProbablity(copyBoard, searching, botMove, full:false);
+            ShowPickProbablity(copyBoard, searching, botMove, full:isExtended);
             return botMove;
         }
 
-        private static void ShowPickProbablity(char[,] copyBoard, Node searching, int botMove, bool full = true)
+        private static void ShowPickProbablity(char[,] copyBoard, Node searching, int botMove, bool full)
         {
-            /*
-                            [0]:80.65% [1]:10.55% ....
-                        */
-
             var availableMoves = Engine.GetLegalMovesList(copyBoard);
             var totalVisits = searching.parent.visits;
 
             double probablity = 0.0;
-                if(full)
+            if(full)
                 {
-                availableMoves.ForEach(x =>
+                     /*
+                    CODE: 112
+
+                    ╔═══════════════════════════════════╗
+                    ║        Which slot choose::        ║
+                    ║       ....      |   1 [~ 8,8%]    ║
+                    ║    2 [~ 8,8%]   |   3 [~ 8,8%]    ║
+                    ║    4 [~ 8,8%]   |   5 [~ 8,8%]    ║
+                    ║    6 [~ 8,8%]   |      ....       ║
+                    ╚═══════════════════════════════════╝
+
+                */
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.WriteLine("║        Which slot choose::        ║");
+                Enumerable.Range(0,Engine.columns%2==0?Engine.columns:Engine.columns+1).ToList().ForEach(x =>
                 {   
-                    probablity = (((double)(searching.parent.childrens.First(child => child.gameState.latestMovement == x).visits) / totalVisits) * 100);
-                    if (botMove == x)
+                    if(x%2==0)
                     {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.Write($"[{x}]:{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}% ");
-                        Console.ResetColor();
+                        // LEWA STRONA
+                        if(searching.parent.childrens.Any(child=>child.gameState.latestMovement == x))
+                        {
+                            probablity = (((double)(searching.parent.childrens.First(child => child.gameState.latestMovement == x).visits) / totalVisits) * 100);
+                            
+                            if(botMove == x)
+                            {
+                                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                                Console.Write($"║    ");
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.Write($"{x} [~{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}%]");
+                                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                                Console.Write("   |");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                                Console.Write($"║    {x} [~{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}%]   |");
+                                Console.ResetColor();
+                            }
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkCyan;
+                            Console.Write($"║       ....      |");
+                        }
                     }
                     else
                     {
-                        Console.ForegroundColor = ConsoleColor.DarkBlue;
-                        Console.Write($"[{x}]:{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}% ");
-                        Console.ResetColor();
+                        // PRAWA STRONA
+                        if(searching.parent.childrens.Any(child=>child.gameState.latestMovement == x))
+                        {
+                            probablity = (((double)(searching.parent.childrens.First(child => child.gameState.latestMovement == x).visits) / totalVisits) * 100);
+
+                            if(botMove == x)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.Write($"    {x} [~{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}%]");
+                                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                                Console.Write("   ║\n");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                                Console.Write($"    {x} [~{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}%]   ║\n");
+                                Console.ResetColor();
+                            }
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkCyan;
+                            Console.Write($"       ....      ║\n");
+                        }
                     }
                 });
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.WriteLine("╚═══════════════════════════════════╝");
+                Console.ResetColor();
             }
             else
             {
@@ -145,17 +212,16 @@ namespace ConnectFour_MCTS
 
                 */
                 probablity = (((double)(searching.parent.childrens.First(child => child.gameState.latestMovement == botMove).visits) / totalVisits) * 100);
-
+                      
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
-                Console.Write($"    Best option is: ");
+                Console.Write($"║   Best option is: ");
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Write($"{botMove} [~{Math.Round(probablity, 1).ToString("0.0").PadLeft(4)}%]");
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
-                Console.Write("     ║\n");
+                Console.Write("      ║\n");
                 Console.WriteLine("╚═══════════════════════════════════╝");
                 Console.ResetColor();
             }
-            Console.WriteLine();
         }
 
         private static void Statistics(Node searching, int searching_timeout)
@@ -185,8 +251,8 @@ namespace ConnectFour_MCTS
                 intFormat = "0`000`000";
             }
             
-            Console.WriteLine($"  Simulations: {simCount.ToString(intFormat).PadLeft(9)} ({searching_timeout}ms)  ");
-            Console.WriteLine("╚═══════════════════════════════════╝");
+            Console.WriteLine($"║  Simulations: {simCount.ToString(intFormat).PadLeft(10)} ({(searching_timeout+"ms)").ToString().PadRight(8)}║");
+             Console.WriteLine("╚═══════════════════════════════════╝");
         }
 
         public static void TestingExamples(Engine Game)
