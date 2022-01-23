@@ -8,20 +8,20 @@ namespace ConnectFour_MCTS
     {
         public int FirstPlayer { get; set; }
         public int SecondPlayer { get; internal set; }
-        public int iterations = 1_000_000;
+        public int iterations = 1_000_000_000;
         public Random rand = new Random();
         public static int SimulationsCount = 0;
         public static int MaxDepth = 0;
 
         public static bool CalculationsInProgress = false;
+        public static List<int> SimulationsCounterRecords = new List<int>();
         public async Task<Node> SearchAsync(char[,] _board, int _timeout)
         {
+           
             //Console.WriteLine("Searching started...");
             CalculationsInProgress = true;
             MaxDepth = 0;
             SimulationsCount = 0;
-
-            //new Thread(new ThreadStart(() => Loading(_timeout))).Start();
             
             Task LoadingTask = new Task(()=>Loading(_timeout));
             LoadingTask.Start();
@@ -61,8 +61,10 @@ namespace ConnectFour_MCTS
             // }
             // Console.WriteLine("max reached depth = "+MaxDepth+" / game simulations: "+simulationsCount);
             // Console.WriteLine();
-            return GetBestMove(root, 0);
 
+            SimulationsCounterRecords.Add(SimulationsCount);
+
+            return GetBestMove(root, 0);
         }
         private Node GetRoot(Node child)
         {
@@ -73,7 +75,6 @@ namespace ConnectFour_MCTS
             else
                 return child;
         }
-        // select best node basing on UCB1 formula ( explorationConst )
         private Node GetBestMove(Node _node, int exploration)
         {
             float bestScore = float.NegativeInfinity; // -oo
@@ -103,7 +104,6 @@ namespace ConnectFour_MCTS
             return bestMoves[rand.Next(0, bestMoves.Count)];
 
         }
-
         private Node SelectNode(Node _node)
         {
             //  Console.WriteLine("# SELECTION");
@@ -119,7 +119,6 @@ namespace ConnectFour_MCTS
             //Engine.DrawBoard(_node.gameState.boardArray);
             return _node;
         }
-
         public Node Expand(Node parent)
         {
             List<int> possibleMovements = Engine.GetLegalMovesList(parent.gameState.boardArray).ToList();
@@ -158,7 +157,6 @@ namespace ConnectFour_MCTS
             }
             return newNode;
         }
-
         private void Backpropagate(Node node, int score)
         {
             //  Console.WriteLine("# BACKPROPAGATION");
@@ -176,7 +174,6 @@ namespace ConnectFour_MCTS
             node.visits += 1;
             node.value += score;
         }
-
         private int Rollout(GameState game)
         {
             var COPYIED_GameState = new GameState(game.boardArray, game.latestMovement, game.latestPlayer);

@@ -68,7 +68,6 @@ public class Engine
                 }
                 Console.WriteLine();
             }
-            Console.WriteLine("winner is = " + result.winnerMark);
         }
         else
         {
@@ -131,7 +130,7 @@ public class Engine
         return result;
     }
     public static (bool status, char? winnerMark, string[]? winerPositions) IsGameEnded(char[,] board)
-    {
+    {   
         // draw checking
         int[] slots = GetLegalMovesList(board);
                 if(slots.Length == 0){
@@ -142,8 +141,6 @@ public class Engine
         int board_x_size = board.GetLength(0);
         int board_y_size = board.GetLength(1);
         string[] winerPositionsStringCode = new string[4];
-        var max_X_scope = board_x_size-3;
-        var max_Y_scope = board_y_size-3;
         #region Sprawdzanie na przekątnych rosnących
          /*
                 -   -   -   -   -   
@@ -153,8 +150,8 @@ public class Engine
                 X   -   -   -   -    
             */
 
-        for(int y = 0; y<max_Y_scope;y++){
-            for(int x = 0; x<max_X_scope;x++){
+        for(int y = 0; y<board_x_size-4;y++){
+            for(int x = 0; x<board_y_size-4;x++){
                 if(board[x,y] == EMPTY) continue;
 
                 if(board[x+1,y+1] == board[x,y] &&  board[x+2,y+2] == board[x,y] && board[x+3,y+3] == board[x,y])
@@ -178,8 +175,8 @@ public class Engine
                 -   -   X   -   -   
                 -   -   -   X   -   
             */        
-        for(int y=3;y<max_Y_scope;y++){
-            for(int x=0;x<max_X_scope;x++){
+        for(int y=3;y<board_y_size;y++){
+            for(int x=0;x<board_x_size-4;x++){
                 if(board[x,y] == EMPTY) continue;
 
                 if(board[x+1,y-1] == board[x,y] &&  board[x+2,y-2] == board[x,y] && board[x+3,y-3] == board[x,y])
@@ -205,7 +202,7 @@ public class Engine
             -   X   -   -   - 
             */
 
-         for(int y=3;y<max_Y_scope;y++){
+         for(int y=3;y<board_y_size;y++){
             for(int x=0;x<board_x_size;x++){
                 if(board[x,y] == EMPTY) continue;
 
@@ -232,7 +229,7 @@ public class Engine
             -   -   -   -   - 
             */
         for(int y=0;y<board_y_size;y++){
-            for(int x=0;x<max_X_scope;x++){
+            for(int x=0;x<board_x_size-4;x++){
                 if(board[x,y] == EMPTY) continue;
 
                 if(board[x+1,y] == board[x,y] &&  board[x+2,y] == board[x,y] && board[x+3,y] == board[x,y])
@@ -249,12 +246,10 @@ public class Engine
         #endregion
         // checking if there is any left space on board
        
-       
-        foreach(char el in board)
-        {
-            if(el == EMPTY)
-                return (status:false,winnerMark:null,null);
-        };
+       for(int x=0,y=board_y_size-1; x<board_x_size; x++)
+       {
+            if(board[x,y] == EMPTY) return (status:false,winnerMark:null,null);
+       }
 
         return (status:true,winnerMark:null,null);
     }
