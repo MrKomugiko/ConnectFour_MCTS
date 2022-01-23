@@ -11,31 +11,23 @@ namespace ConnectFour_MCTS
             Engine.columns = 7;
             Engine.rows = 6;
 
-            MCTS _mcts_1 = new MCTS();
-            _mcts_1.AIBot_Id = 1;
-            _mcts_1.EnemyID = 2;
-
-             MCTS _mcts_2 = new MCTS();
-            _mcts_2.AIBot_Id = 2;
-            _mcts_2.EnemyID = 1;
-
-
-            int searching_timeout = 1500;
+            int searching_timeout = 1000;
             //
                 var Game = new Engine();
                 (bool status, char? winnerMark, string[]? winerPositions) GameOver = (false, null, null);
                 
                 while(GameOver.status == false)
                 {
-                    // Player 1
-                    GameOver = await BOT_(Game, _mcts_1, GameOver, searching_timeout);
+                // Player 1 - FULL AI
+                    GameOver = await BOT_(Game, searching_timeout, PlayerID:1);
                     if (GameOver.status == true) break;
 
-                    // Player 2
-                    GameOver = await BOT_(Game, _mcts_2, GameOver, searching_timeout);
+                // Player 2 - FULL AI
+                    GameOver = await BOT_(Game, searching_timeout, PlayerID:2);
                     if (GameOver.status == true) break;
 
-                    // GameOver = await PLAYER_(Game, _mcts_1, GameOver, searching_timeout);
+                // Player 2 - Human with AI helps (code 112 and 666)
+                    // GameOver = await PLAYER_(Game, searching_timeout, PlayerID:2);
                     // if (GameOver.status == true) break;
 
                 }
@@ -57,36 +49,41 @@ namespace ConnectFour_MCTS
             }
         }
 
-        private static async Task<(bool status, char? winnerMark, string[] winerPositions)> BOT_(Engine Game, MCTS _mcts_1, (bool status, char? winnerMark, string[] winerPositions) GameOver, int searching_timeout)
+        private static async Task<(bool status, char? winnerMark, string[] winerPositions)> BOT_(Engine Game, int searching_timeout, int PlayerID)
         {
+            MCTS _mcts = new MCTS();
+            _mcts.FirstPlayer = PlayerID;
+            _mcts.SecondPlayer = PlayerID==1?2:1;
+
             Console.WriteLine($"╔═══════════════════════════════════╗");
-            Console.WriteLine($"║     [AI] Player-{_mcts_1.AIBot_Id} ('{(_mcts_1.AIBot_Id == 1 ? Engine.player1_mark : Engine.player2_mark)}') Turn      ║");
+            Console.WriteLine($"║     [AI] Player-{_mcts.FirstPlayer} ('{(_mcts.FirstPlayer == 1 ? Engine.player1_mark : Engine.player2_mark)}') Turn      ║");
             Console.WriteLine($"╚═══════════════════════════════════╝");
 
-            var searching = await _mcts_1.SearchAsync(Game.board, _timeout: searching_timeout);
+            var searching = await _mcts.SearchAsync(Game.board, _timeout: searching_timeout);
             Console.ForegroundColor = ConsoleColor.DarkCyan;
             Statistics(searching, searching_timeout);
             var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
             Console.ResetColor();
 
             // wykonanie ruchu przez bota
-            Game.MakeMove(botMove, _mcts_1.AIBot_Id);
-            GameOver = Engine.DrawBoard(Game.board);
+            Game.MakeMove(botMove, _mcts.FirstPlayer);
+            var result = Engine.DrawBoard(Game.board);
             //GameOver = Engine.IsGameEnded(Game.board);
 
-            return GameOver;
+            return result;
         }
-        private static async Task<(bool status, char? winnerMark, string[] winerPositions)> PLAYER_(Engine Game, MCTS _mcts_1, (bool status, char? winnerMark, string[] winerPositions) GameOver, int searching_timeout)
+        private static async Task<(bool status, char? winnerMark, string[] winerPositions)> PLAYER_(Engine Game,int searching_timeout, int PlayerID)
         {
+            (bool status, char? winnerMark, string[]? winerPositions) result = (false,null,null);
+
             Console.WriteLine($"╔═══════════════════════════════════╗");
-            Console.WriteLine($"║       Player-{_mcts_1.EnemyID} ('{(_mcts_1.EnemyID == 1 ? Engine.player1_mark : Engine.player2_mark)}') Turn         ║");
+            Console.WriteLine($"║       Player-{PlayerID} ('{(PlayerID == 1 ? Engine.player1_mark : Engine.player2_mark)}') Turn         ║");
             Console.WriteLine($"╚═══════════════════════════════════╝");
 
             string choices = "";
             int[] availableMoves = Engine.GetLegalMovesList(Game.board);
             foreach (int move in Engine.GetLegalMovesList(Game.board))
                 choices += $"[{move}] ";
-
             int playerMove = -1;
             Console.WriteLine($"DOSTĘPNE RUCHY: \n{choices}: ");
             while (true)
@@ -102,36 +99,40 @@ namespace ConnectFour_MCTS
                 ClearCurrentConsoleLine();
                 if (playerMove == 666)
                 {
-                    playerMove = await Call_AI_HintAsync(currentState: Game.board, yourID: _mcts_1.EnemyID, searching_timeout);
+                    playerMove = await Call_AI_HintAsync(currentState: Game.board, yourID: PlayerID, searching_timeout);
                     continue;
                 }
                 else if (playerMove == 112)
                 {
-                    playerMove = await Call_AI_HintAsync(currentState: Game.board, yourID: _mcts_1.EnemyID, searching_timeout, true);
+                    playerMove = await Call_AI_HintAsync(currentState: Game.board, yourID: PlayerID, searching_timeout, true);
                     continue;
                 }
-                if (availableMoves.Contains(playerMove) == false && playerMove != 666)
+                if (availableMoves.Contains(playerMove) == false)
                 {
                     Console.WriteLine($"Błąd:[{playerMove}] jest niedozwolonym ruchem.");
                     continue;
                 }
+                else
+                {
+                    Game.MakeMove(playerMove, PlayerID);
+                    result = Engine.DrawBoard(Game.board);
+                }
 
-                GameOver = Engine.DrawBoard(Game.board);
                 break;
             }
 
             Console.WriteLine();
-            return GameOver;
+            return result;
         }
 
         private static async Task<int> Call_AI_HintAsync(char[,] currentState, int yourID, int timeout, bool isExtended = false)
         {
             var copyBoard = (char[,])currentState.Clone();
-            MCTS _mcts_2 = new MCTS();
-            _mcts_2.AIBot_Id = yourID;
-            _mcts_2.EnemyID = yourID == 1 ? 2 : 1;
+            MCTS _mcts = new MCTS();
+            _mcts.FirstPlayer = yourID;
+            _mcts.SecondPlayer = yourID == 1 ? 2 : 1;
 
-            var searching = await _mcts_2.SearchAsync(copyBoard, timeout);
+            var searching = await _mcts.SearchAsync(copyBoard, timeout);
             var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
             ShowPickProbablity(copyBoard, searching, botMove, full:isExtended);
             return botMove;
@@ -246,11 +247,11 @@ namespace ConnectFour_MCTS
         }
         private static void Statistics(Node searching, int searching_timeout)
         {
-            foreach (var child in searching.parent.childrens)
-            {
-                Console.WriteLine($"Value:{child.value}\tVisits:{child.visits}\t[v:{child.victoriesCount}/d:{child.drawsCount}/l:{child.losesCount}],\tUCB1:{child.UCB1Score} ");
-                Engine.DrawBoard(child.gameState.boardArray);
-            }
+            // foreach (var child in searching.parent.childrens)
+            // {
+            //     Console.WriteLine($"Value:{child.value}\tVisits:{child.visits}\t[v:{child.victoriesCount}/d:{child.drawsCount}/l:{child.losesCount}],\tUCB1:{child.UCB1Score} ");
+            //     Engine.DrawBoard(child.gameState.boardArray);
+            // }
             /*
             ╔═══════════════════════════════════╗
             Simulations:    25551 (3500ms)
@@ -272,6 +273,7 @@ namespace ConnectFour_MCTS
             }
             
             Console.WriteLine($"║  Simulations: {simCount.ToString(intFormat).PadLeft(10)} ({(searching_timeout+"ms)").ToString().PadRight(8)}║");
+            Console.WriteLine($"║     - max depth: {MCTS.MaxDepth.ToString().PadLeft(3)             }║");
              Console.WriteLine("╚═══════════════════════════════════╝");
         }
         public static void TestingExamples(Engine Game)

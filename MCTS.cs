@@ -6,8 +6,8 @@ namespace ConnectFour_MCTS
 {
     public class MCTS
     {
-        public int AIBot_Id { get; set; }
-        public int EnemyID { get; internal set; }
+        public int FirstPlayer { get; set; }
+        public int SecondPlayer { get; internal set; }
         public int iterations = 1_000_000;
         public Random rand = new Random();
         public static int SimulationsCount = 0;
@@ -27,7 +27,7 @@ namespace ConnectFour_MCTS
             LoadingTask.Start();
             
             // create root node
-            Node root = new Node(_parent: null, _board: _board, AIBot_Id == 1 ? 2 : 1);
+            Node root = new Node(_parent: null, _board: _board, FirstPlayer == 1 ? 2 : 1);
             // timeout settings
             var _tokenSource = new CancellationTokenSource();
             var token = _tokenSource.Token;
@@ -84,7 +84,6 @@ namespace ConnectFour_MCTS
             double explorationConst = exploration;
             foreach (var child in _node.childrens)
             {
-
                 double averageScorePerVisitCurrentNode = (child.value) / (double)child.visits;
                 double UCBScore = averageScorePerVisitCurrentNode + (explorationConst * (Math.Sqrt(lnOftotalVisits / (double)child.visits)));
 
@@ -148,7 +147,7 @@ namespace ConnectFour_MCTS
                 {
                     int WINNER_ID = result.winnerMark == Engine.player1_mark ? 1 : 2;
 
-                    if (WINNER_ID != AIBot_Id)
+                    if (WINNER_ID != FirstPlayer)
                     {
                         //Console.WriteLine("Przegrałbys tak czy siak, przeciwnik moze wygrac w nastepnym ruchu na 100%");
                         parent.IsTerminated = true;
@@ -181,14 +180,15 @@ namespace ConnectFour_MCTS
         private int Rollout(GameState game)
         {
             var COPYIED_GameState = new GameState(game.boardArray, game.latestMovement, game.latestPlayer);
-            var result = Engine.Simulate(COPYIED_GameState.latestPlayer, COPYIED_GameState.boardArray);
+            int nextMovePlayerId = COPYIED_GameState.latestPlayer==1?2:1;
+            var result = Engine.Simulate(nextMovePlayerId, COPYIED_GameState.boardArray);
 
             if (result.status)
             {
                 if (result.winnerMark != null)
                 {
                     var winnerID = result.winnerMark == Engine.player1_mark ? 1 : 2;
-                    if (winnerID == AIBot_Id)
+                    if (winnerID == FirstPlayer)
                         return 1;
                     else
                         return -1;
