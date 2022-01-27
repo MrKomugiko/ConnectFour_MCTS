@@ -2,6 +2,8 @@ using ConnectFour_MCTS;
 using System.Linq;
 public class Engine
 {
+    public static Random rand = new Random();
+    private static List<int> legalMoves = new();
     public static int rows;
     public static int columns;
     public static readonly char EMPTY = Char.Parse("-");
@@ -32,7 +34,6 @@ public class Engine
             }
         }
     }
-    private static List<int> legalMoves = new();
     public static (bool status, char? winnerMark, string[]? winerPositions) DrawBoard(char[,] _boardCopy)
     {
         var result = IsGameEnded(_boardCopy);
@@ -96,7 +97,6 @@ public class Engine
 
         return legalMoves.ToArray();
     }
-
     private char[,] NewClearBoard() 
     {
         char[,] board = new char[columns,rows];
@@ -108,7 +108,6 @@ public class Engine
         }
         return board;
     } 
-    public static Random rand = new Random();
     public static (bool status, char? winnerMark, string[]? winerPositions) Simulate(int NextPlayerWhoMakeMove, char[,] _board)
     {
         MCTS.SimulationsCount++;
@@ -134,13 +133,13 @@ public class Engine
         // draw checking
         int[] slots = GetLegalMovesList(board);
                 if(slots.Length == 0){
-                  //  Console.WriteLine("emmm?");
                     return (true, null, null); // remis
                 }
         
         int board_x_size = board.GetLength(0);
         int board_y_size = board.GetLength(1);
         string[] winerPositionsStringCode = new string[4];
+       
         #region Sprawdzanie na przekątnych rosnących
          /*
                 -   -   -   -   -   
@@ -150,8 +149,9 @@ public class Engine
                 X   -   -   -   -    
             */
 
-        for(int y = 0; y<board_x_size-4;y++){
-            for(int x = 0; x<board_y_size-4;x++){
+
+        for(int x = 0; x<board_x_size-3;x++){
+            for(int y = 0; y<board_y_size-3;y++){
                 if(board[x,y] == EMPTY) continue;
 
                 if(board[x+1,y+1] == board[x,y] &&  board[x+2,y+2] == board[x,y] && board[x+3,y+3] == board[x,y])
@@ -165,6 +165,7 @@ public class Engine
                 }
             }
         }
+
      
         #endregion
         #region Sprawdzanie na przekątnych malejąco
@@ -176,7 +177,7 @@ public class Engine
                 -   -   -   X   -   
             */        
         for(int y=3;y<board_y_size;y++){
-            for(int x=0;x<board_x_size-4;x++){
+            for(int x=0;x<board_x_size-3;x++){
                 if(board[x,y] == EMPTY) continue;
 
                 if(board[x+1,y-1] == board[x,y] &&  board[x+2,y-2] == board[x,y] && board[x+3,y-3] == board[x,y])
@@ -201,26 +202,23 @@ public class Engine
             -   X   -   -   - 
             -   X   -   -   - 
             */
-
-         for(int y=3;y<board_y_size;y++){
-            for(int x=0;x<board_x_size;x++){
+         for(int x=0;x<board_x_size;x++){
+            for(int y=0;y<board_y_size-3;y++){
                 if(board[x,y] == EMPTY) continue;
 
-                if(board[x,y-1] == board[x,y] &&  board[x,y-2] == board[x,y] && board[x,y-3] == board[x,y])
+                if(board[x,y+1] == board[x,y] &&  board[x,y+2] == board[x,y] && board[x,y+3] == board[x,y])
                 {
                     winerPositionsStringCode[0] = $"{x}&{y}";
-                    winerPositionsStringCode[1] = $"{x}&{y-1}";
-                    winerPositionsStringCode[2] = $"{x}&{y-2}";
-                    winerPositionsStringCode[3] = $"{x}&{y-3}";
+                    winerPositionsStringCode[1] = $"{x}&{y+1}";
+                    winerPositionsStringCode[2] = $"{x}&{y+2}";
+                    winerPositionsStringCode[3] = $"{x}&{y+3}";
 
                     return (status:true,winnerMark:board[x,y], winerPositionsStringCode);
                 }
             }
         }
-        #endregion
-       
-        #region Sprawdzanie poziome
-        
+        #endregion      
+        #region Sprawdzanie poziome   
           /*
             -   -   -   -   -   
             -   -   -   -   - 
@@ -229,7 +227,8 @@ public class Engine
             -   -   -   -   - 
             */
         for(int y=0;y<board_y_size;y++){
-            for(int x=0;x<board_x_size-4;x++){
+            for(int x=0;x<board_x_size-3;x++){
+
                 if(board[x,y] == EMPTY) continue;
 
                 if(board[x+1,y] == board[x,y] &&  board[x+2,y] == board[x,y] && board[x+3,y] == board[x,y])
@@ -244,11 +243,11 @@ public class Engine
             }
         }
         #endregion
-        // checking if there is any left space on board
        
        for(int x=0,y=board_y_size-1; x<board_x_size; x++)
        {
-            if(board[x,y] == EMPTY) return (status:false,winnerMark:null,null);
+            if(board[x,y] == EMPTY) 
+                return (status:false,winnerMark:null,null);
        }
 
         return (status:true,winnerMark:null,null);

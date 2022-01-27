@@ -7,12 +7,12 @@ namespace ConnectFour_MCTS
         public GameState gameState {get;set;}
         
         public int level { get; set; } = 0;
-        public int value { get; set; } = 0;
+        public double value { get; set; } = 0;
 
         public int victoriesCount { get; set; } = 0;
         public int drawsCount { get; set; } = 0;
-        public int losesCount { get; set; } = 0;
 
+        public int losesCount { get; set; } = 0;
         public int visits { get; set; } = 0;
         private bool loseGuaranteed;
 

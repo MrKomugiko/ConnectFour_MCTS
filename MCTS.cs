@@ -17,23 +17,19 @@ namespace ConnectFour_MCTS
         public static List<int> SimulationsCounterRecords = new List<int>();
         public async Task<Node> SearchAsync(char[,] _board, int _timeout)
         {
-           
-            //Console.WriteLine("Searching started...");
             CalculationsInProgress = true;
             MaxDepth = 0;
             SimulationsCount = 0;
             
             Task LoadingTask = new Task(()=>Loading(_timeout));
             LoadingTask.Start();
-            
-            // create root node
+
             Node root = new Node(_parent: null, _board: _board, FirstPlayer == 1 ? 2 : 1);
             // timeout settings
             var _tokenSource = new CancellationTokenSource();
             var token = _tokenSource.Token;
             _tokenSource.CancelAfter(_timeout);
 
-            // search iteration
             for (int i = 0; i < iterations; i++)
             {
                 if (token.IsCancellationRequested)
@@ -45,10 +41,10 @@ namespace ConnectFour_MCTS
                 Node node = SelectNode(root);
 
                 // rollout
-                int score = Rollout(node.gameState);
+                double score = Rollout(node.gameState);
 
-                // backpropagation
                 Backpropagate(node, score);
+                // backpropagation
             }
 
             CalculationsInProgress = false;
@@ -59,7 +55,6 @@ namespace ConnectFour_MCTS
             //     Console.WriteLine($"Value: {child.value}\tVisits: {child.visits}\tUCB1: {child.UCB1Score}");
             //     Engine.DrawBoard(child.gameState.boardArray);
             // }
-            // Console.WriteLine("max reached depth = "+MaxDepth+" / game simulations: "+simulationsCount);
             // Console.WriteLine();
 
             SimulationsCounterRecords.Add(SimulationsCount);
@@ -76,7 +71,7 @@ namespace ConnectFour_MCTS
                 return child;
         }
         private Node GetBestMove(Node _node, int exploration)
-        {
+        { 
             float bestScore = float.NegativeInfinity; // -oo
             List<Node> bestMoves = new();
 
@@ -85,8 +80,9 @@ namespace ConnectFour_MCTS
             double explorationConst = exploration;
             foreach (var child in _node.childrens)
             {
+                int player = child.gameState.latestPlayer==FirstPlayer?1:-1;
                 double averageScorePerVisitCurrentNode = (child.value) / (double)child.visits;
-                double UCBScore = averageScorePerVisitCurrentNode + (explorationConst * (Math.Sqrt(lnOftotalVisits / (double)child.visits)));
+                double UCBScore = player * averageScorePerVisitCurrentNode + (explorationConst * (Math.Sqrt(lnOftotalVisits / (double)child.visits)));
 
                 child.UCB1Score = (float)UCBScore;
 
@@ -101,22 +97,22 @@ namespace ConnectFour_MCTS
                 }
             }
 
+            if(bestMoves.Count==0)
+            {
+                Console.WriteLine("???????? ");
+            }
             return bestMoves[rand.Next(0, bestMoves.Count)];
 
         }
         private Node SelectNode(Node _node)
         {
-            //  Console.WriteLine("# SELECTION");
-
             while (!_node.IsTerminated)
             {
                 if (_node.isFullyExpanded)
                     _node = GetBestMove(_node, 2);
                 else
-                    return Expand(_node) ?? _node;
+                    return Expand(_node);
             }
-
-            //Engine.DrawBoard(_node.gameState.boardArray);
             return _node;
         }
         public Node Expand(Node parent)
@@ -128,7 +124,7 @@ namespace ConnectFour_MCTS
             if (possibleMovements.Count == 0)
             {
                 parent.isFullyExpanded = true;
-                return null;
+                return parent;
             }
 
             Node newNode = new Node(parent, parent.gameState.boardArray, parent.gameState.latestPlayer);
@@ -157,7 +153,7 @@ namespace ConnectFour_MCTS
             }
             return newNode;
         }
-        private void Backpropagate(Node node, int score)
+        private void Backpropagate(Node node, double score)
         {
             //  Console.WriteLine("# BACKPROPAGATION");
             while (node.parent != null)
@@ -174,7 +170,7 @@ namespace ConnectFour_MCTS
             node.visits += 1;
             node.value += score;
         }
-        private int Rollout(GameState game)
+        private double Rollout(GameState game)
         {
             var COPYIED_GameState = new GameState(game.boardArray, game.latestMovement, game.latestPlayer);
             int nextMovePlayerId = COPYIED_GameState.latestPlayer==1?2:1;
@@ -207,47 +203,43 @@ namespace ConnectFour_MCTS
         }
         public static async Task Loading(int ms)
         {
-            /*
-            
-                                ░
-                    ▒
-                    ▓
-                    
-                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 28x
-                    ▓▓▓▓▓▓▓▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 28x
-                    
-            */
-            char empty_mark = Char.Parse("░");
-            char full_mark = Char.Parse("▓");
-            int splitValue = 28;
-            int interval = (ms) / splitValue;
-            int counter = 1;        // 120/1000
-            StringBuilder progressBar = new StringBuilder("", 28);
-            Console.ForegroundColor = ConsoleColor.DarkCyan;
-            Console.WriteLine("╔═══════════════════════════════════╗");
-            Console.WriteLine();
-            while (MCTS.CalculationsInProgress)
+            if(ms >=1000)
             {
-                progressBar.Clear();
-                var progress =Math.Round(counter/(double)splitValue,2);
-                progressBar.Append(new string(full_mark, (int)(progress*splitValue)));
-				progressBar.Append(new string(empty_mark, splitValue-(int)(progress*splitValue)));
-
-                Console.SetCursorPosition(0, Console.CursorTop - 1);
-                counter++;
+                char empty_mark = Char.Parse("░");
+                char full_mark = Char.Parse("▓");
+                int splitValue = 28;
+                int interval = (ms) / splitValue;
+                int counter = 1;        // 120/1000
+                StringBuilder progressBar = new StringBuilder("", 28);
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
-                Console.WriteLine($"    {progressBar.ToString()}   ");
-                Console.ResetColor();
-                Thread.Sleep(interval);
-                if (counter >= splitValue)
+                Console.WriteLine("╔═══════════════════════════════════╗");
+                Console.WriteLine();
+                while (MCTS.CalculationsInProgress)
                 {
-                    break;
-                }
+                    progressBar.Clear();
+                    var progress =Math.Round(counter/(double)splitValue,2);
+                    progressBar.Append(new string(full_mark, (int)(progress*splitValue)));
+		        	progressBar.Append(new string(empty_mark, splitValue-(int)(progress*splitValue)));
 
+                    Console.SetCursorPosition(0, Console.CursorTop - 1);
+                    counter++;
+                    Console.ForegroundColor = ConsoleColor.DarkCyan;
+                    Console.WriteLine($"    {progressBar.ToString()}   ");
+                    Console.ResetColor();
+                    Thread.Sleep(interval);
+                    if (counter >= splitValue)
+                    {
+                        break;
+                    }
+
+                }
+                Console.SetCursorPosition(0, Console.CursorTop - 1);
+                ClearCurrentConsoleLine();
             }
-                // kasowanie paska postępu ( i tak jest juz załądowany)
-            Console.SetCursorPosition(0, Console.CursorTop - 1);
-            ClearCurrentConsoleLine();
+            else
+            {
+                return;
+            }
         }
     }
 }

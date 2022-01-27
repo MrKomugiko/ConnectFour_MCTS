@@ -7,35 +7,42 @@ namespace ConnectFour_MCTS
         public static List<(List<int> simulationRecords, int? winnerId, int timeout, char[,] boardState)> AnaliticsData = new();
         public static async Task Main(string[] args)
         {
-            Engine.player1_mark = Char.Parse("O");
-            Engine.player2_mark = Char.Parse("X");
-            Engine.columns = 7;
-            Engine.rows = 6;
+            Engine.player1_mark = Char.Parse("X");
+            Engine.player2_mark = Char.Parse("O");
+            Engine.columns = 7; //7
+            Engine.rows = 6;//6
+            int searching_timeout = 100;
 
-            int searching_timeout = 150;
-            //
-            for (int i = 0; i < 20; i++)
-            {
+            //                              
+            for (int i = 0; i < 20; i++) 
+            {                              
                 var Game = new Engine();
+                // create test board
+                //Game.board = TestBoard(Game.board, 4);
                 (bool status, char? winnerMark, string[]? winerPositions) GameOver = (false, null, null);
 
                 while (GameOver.status == false)
                 {
+
                     // Player 1 - FULL AI
                     GameOver = await BOT_(Game, searching_timeout, PlayerID: 1);
                     if (GameOver.status == true) break;
-
-                    // Player 2 - FULL AI
-                    GameOver = await BOT_(Game, searching_timeout, PlayerID: 2);
-                    if (GameOver.status == true) break;
-
-                    // Player 2 - Human with AI helps (code 112 and 666)
+                    
+                    ////Player 1 - Human with AI helps (code 112 and 666)
+                     //GameOver = await PLAYER_(Game, searching_timeout, PlayerID:1);
+                     //if (GameOver.status == true) break;
+                   
+                    ////Player 2 - Human with AI helps (code 112 and 666)
                     // GameOver = await PLAYER_(Game, searching_timeout, PlayerID:2);
                     // if (GameOver.status == true) break;
-
+                    
+                    // Player 2 - FULL AI
+                     GameOver = await BOT_(Game, searching_timeout*10, PlayerID: 2);
+                     if (GameOver.status == true) break;
                 }
 
-                Console.WriteLine("------------------------Wynik--------------------------");
+                Console.WriteLine( "------------------------Wynik--------------------------");
+                Console.WriteLine($"----------------------[{i.ToString().PadLeft(3)}/500]------------------------");
                 
                 int? winID = GameOver.winnerMark==null?null:(GameOver.winnerMark == Engine.player1_mark ? 1 : 2);
                 AnaliticsData.Add(
@@ -50,9 +57,9 @@ namespace ConnectFour_MCTS
                 MCTS.SimulationsCounterRecords.Clear();
 
                 Engine.DrawBoard(Game.board);
-                Console.WriteLine("------------------------Wynik---------------------------");
-
+                Console.WriteLine("--------------------------------------------------------");
             }
+            
 
             Console.WriteLine();
             PrintAnalitics();
@@ -68,12 +75,7 @@ namespace ConnectFour_MCTS
         }
         private static void PrintAnalitics()
         {
-            // ╗╣Ş╗Ż╗╝Ż◙ż┐└┴┬├─┼Ăă╚╔╩╦╠║
-
-
             /*
-║   - Simulations:       401`618     ║
-║   - Sim per sec:       8`032       ║
                 ╔═══════════════════════════════════╗
                 ║            ANALITICS              ║
                 ║═══════════════════════════════════╣
@@ -99,7 +101,7 @@ namespace ConnectFour_MCTS
             {
                 int totalSum = data.simulationRecords.Sum();
                 int simPerSec = (int)((double)totalSum / data.simulationRecords.Count);
-                Console.WriteLine($"║  GAME [{index.ToString().PadLeft(3)}]:                      ║");
+                Console.WriteLine($"║  GAME {index.ToString().PadLeft(3)}:                        ║");
                 Console.WriteLine($"║   - Turns: {data.simulationRecords.Count.ToString().PadLeft(3)}                    ║");
                 Console.WriteLine($"║   - Simulations: {totalSum.ToString(IntFormatter(totalSum)).PadLeft(13)}    ║");
                 Console.WriteLine($"║   - Sim per turn: {simPerSec.ToString(IntFormatter(simPerSec)).PadLeft(12)}    ║");
@@ -123,15 +125,14 @@ namespace ConnectFour_MCTS
             Console.WriteLine($"╚═══════════════════════════════════╝");
 
             var searching = await _mcts.SearchAsync(Game.board, _timeout: searching_timeout);
-            Console.ForegroundColor = ConsoleColor.DarkCyan;
-            Statistics(searching, searching_timeout);
+            
+            //Statistics(searching, searching_timeout);
             var botMove = searching.gameState.latestMovement ?? throw new Exception("nie ma ruchu ?");
-            Console.ResetColor();
-
-            // wykonanie ruchu przez bota
+         
             Game.MakeMove(botMove, _mcts.FirstPlayer);
+
             var result = Engine.DrawBoard(Game.board);
-            //GameOver = Engine.IsGameEnded(Game.board);
+            //var result = Engine.IsGameEnded(Game.board);
 
             return result;
         }
@@ -187,7 +188,6 @@ namespace ConnectFour_MCTS
             Console.WriteLine();
             return result;
         }
-
         private static async Task<int> Call_AI_HintAsync(char[,] currentState, int yourID, int timeout, bool isExtended = false)
         {
             var copyBoard = (char[,])currentState.Clone();
@@ -308,8 +308,9 @@ namespace ConnectFour_MCTS
                 Console.ResetColor();
             }
         }
-        private static void Statistics(Node searching, int searching_timeout)
+        private static void Statistics(Node searching, int searching_timeout, ConsoleColor color = ConsoleColor.DarkCyan )
         {
+            Console.ForegroundColor = color;
             // foreach (var child in searching.parent.childrens)
             // {
             //     Console.WriteLine($"Value:{child.value}\tVisits:{child.visits}\t[v:{child.victoriesCount}/d:{child.drawsCount}/l:{child.losesCount}],\tUCB1:{child.UCB1Score} ");
@@ -325,8 +326,8 @@ namespace ConnectFour_MCTS
             Console.WriteLine($"║  Simulations: {simCount.ToString(IntFormatter(simCount)).PadLeft(10)} ({(searching_timeout + "ms)").ToString().PadRight(8)}║");
             Console.WriteLine($"║     - max depth: {MCTS.MaxDepth.ToString().PadLeft(3)}              ║");
             Console.WriteLine("╚═══════════════════════════════════╝");
+            Console.ResetColor();
         }
-
         public static string IntFormatter(int simCount)
         {
             string intFormat = "";
@@ -345,7 +346,7 @@ namespace ConnectFour_MCTS
 
             return intFormat;
         }
-         public static string IntFormatter(double simCount)
+        public static string IntFormatter(double simCount)
         {
             string intFormat = "";
             if (simCount >= 0 && simCount <= 999)
@@ -362,88 +363,6 @@ namespace ConnectFour_MCTS
             }
 
             return intFormat;
-        }
-
-        public static void TestingExamples(Engine Game)
-        {
-            char[,] board = Game.board;
-
-            Console.WriteLine("empty board");
-            Engine.DrawBoard(board);
-
-            char[,] board_copy_1 = (char[,])board.Clone();
-            board_copy_1[0, 1] = Char.Parse("O");
-            board_copy_1[0, 2] = Char.Parse("O");
-            board_copy_1[0, 3] = Char.Parse("O");
-            board_copy_1[0, 4] = Char.Parse("O");
-
-            Console.WriteLine("test 1:");
-            Engine.DrawBoard(board_copy_1);
-
-            //------------------------------------------------------------
-            char[,] board_copy_2 = (char[,])board.Clone();
-            board_copy_2[1, 1] = Char.Parse("O");
-            board_copy_2[2, 1] = Char.Parse("O");
-            board_copy_2[3, 1] = Char.Parse("O");
-            board_copy_2[4, 1] = Char.Parse("O");
-
-            Console.WriteLine("test 2:");
-            Engine.DrawBoard(board_copy_2);
-
-            //------------------------------------------------------------
-            char[,] board_copy_3 = (char[,])board.Clone();
-            board_copy_3[1, 1] = Char.Parse("O");
-            board_copy_3[2, 2] = Char.Parse("O");
-            board_copy_3[3, 3] = Char.Parse("O");
-            board_copy_3[4, 4] = Char.Parse("O");
-
-            Console.WriteLine("test 3:");
-            Engine.DrawBoard(board_copy_3);
-
-            //------------------------------------------------------------
-            char[,] board_copy_4 = (char[,])board.Clone();
-            board_copy_4[5, 2] = Char.Parse("O");
-            board_copy_4[4, 3] = Char.Parse("O");
-            board_copy_4[3, 4] = Char.Parse("O");
-            board_copy_4[2, 5] = Char.Parse("O");
-
-            Console.WriteLine("test 4:");
-            Engine.DrawBoard(board_copy_4);
-
-            //------------------------------------------------------------
-            char[,] board_copy_5 = (char[,])board.Clone();
-            board_copy_5[1, 0] = Char.Parse("O");
-            board_copy_5[1, 1] = Char.Parse("X");
-            board_copy_5[2, 0] = Char.Parse("X");
-            board_copy_5[2, 1] = Char.Parse("X");
-            board_copy_5[2, 2] = Char.Parse("X");
-            board_copy_5[3, 0] = Char.Parse("O");
-            board_copy_5[3, 1] = Char.Parse("X");
-            board_copy_5[3, 2] = Char.Parse("O");
-            board_copy_5[4, 0] = Char.Parse("X");
-            board_copy_5[4, 1] = Char.Parse("O");
-            board_copy_5[4, 2] = Char.Parse("O");
-            board_copy_5[4, 3] = Char.Parse("O");
-            board_copy_5[5, 0] = Char.Parse("X");
-            board_copy_5[5, 1] = Char.Parse("O");
-            board_copy_5[5, 2] = Char.Parse("X");
-            board_copy_5[5, 3] = Char.Parse("X");
-            board_copy_5[5, 4] = Char.Parse("O");
-            board_copy_5[5, 5] = Char.Parse("X");
-            board_copy_5[6, 0] = Char.Parse("O");
-            board_copy_5[6, 1] = Char.Parse("X");
-            board_copy_5[6, 2] = Char.Parse("X");
-            board_copy_5[6, 3] = Char.Parse("O");
-            board_copy_5[6, 4] = Char.Parse("X");
-            board_copy_5[6, 5] = Char.Parse("O");
-
-            Console.WriteLine("test 5:");
-            Engine.DrawBoard(board_copy_5);
-
-            //------------------------------------------------------------
-            char[,] board_copy_6 = (char[,])board.Clone();
-            board_copy_6[0, 0] = Char.Parse("O");
-            board_copy_6[5, 5] = Char.Parse("X");
         }
         public static void ClearCurrentConsoleLine()
         {
